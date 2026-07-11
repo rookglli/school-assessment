@@ -1,0 +1,57 @@
+.home-page {
+  min-height: 100vh;
+}
+
+.hero {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 40px 20px;
+}
+
+.hero-content {
+  width: 100%;
+  max-width: 760px;
+  text-align: center;
+}
+
+.hero-label {
+  margin-bottom: 16px;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.hero-title {
+  margin-bottom: 24px;
+  font-size: 48px;
+  line-height: 1.15;
+}
+
+.hero-description {
+  margin-bottom: 32px;
+  font-size: 20px;
+  line-height: 1.6;
+}
+
+.hero-button {
+  min-width: 220px;
+  padding: 14px 24px;
+  border: none;
+  border-radius: 8px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+@media screen and (max-width: 767px) {
+  .hero-title {
+    font-size: 34px;
+  }
+
+  .hero-description {
+    font-size: 17px;
+  }
+}
