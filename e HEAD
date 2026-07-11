@@ -1,0 +1,12 @@
+* [33m5cf17ab[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/develop[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mdevelop[m[33m)[m Fix GitHub Pages deployment
+* [33m3735ed3[m Update deploy.yml
+*   [33m6f0af48[m Merge pull request #2 from rookglli/develop
+[32m|[m[33m\[m  
+[32m|[m * [33mac65390[m Configure GitHub Pages deployment
+[32m|[m *   [33m5bec982[m Merge pull request #1 from rookglli/feature/frontend-setup
+[32m|[m [34m|[m[35m\[m  
+[32m|[m [34m|[m * [33mb52cd14[m[33m ([m[1;31morigin/feature/frontend-setup[m[33m)[m Set up Ukrainian React frontend
+[32m|[m [34m|[m[34m/[m  
+[32m|[m * [33m13e1788[m Initialize project structure
+[32m|[m[32m/[m  
+* [33mf97554d[m Initial commit
