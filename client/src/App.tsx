@@ -1,27 +1,43 @@
+import { Navigate, Route, Routes } from 'react-router';
+
+import HomePage from './pages/HomePage';
+import SubjectsPage from './pages/SubjectsPage';
+import SubjectTopicsPage from './pages/SubjectTopicsPage';
+import TestDetailsPage from './pages/TestDetailsPage';
+import TestPage from './pages/TestPage';
+import ResultsPage from './pages/ResultsPage';
+
 import './App.css';
 
 function App() {
   return (
-    <main className="home-page">
-      <section className="hero">
-        <div className="hero-content">
-          <p className="hero-label">Перевірка знань</p>
+    <Routes>
+      <Route path="/" element={<HomePage />} />
 
-          <h1 className="hero-title">
-            Перевір, наскільки добре засвоєна шкільна програма
-          </h1>
+      <Route path="/subjects" element={<SubjectsPage />} />
 
-          <p className="hero-description">
-            Проходь тести зі шкільних предметів, дізнавайся свій результат та
-            отримуй рекомендації щодо тем, які потрібно повторити.
-          </p>
+      <Route
+        path="/subjects/:subjectId"
+        element={<SubjectTopicsPage />}
+      />
 
-          <button className="hero-button" type="button">
-            Розпочати тестування
-          </button>
-        </div>
-      </section>
-    </main>
+      <Route
+        path="/tests/:testId"
+        element={<TestDetailsPage />}
+      />
+
+      <Route
+        path="/tests/:testId/start"
+        element={<TestPage />}
+      />
+
+      <Route
+        path="/results/:attemptId"
+        element={<ResultsPage />}
+      />
+
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
 
