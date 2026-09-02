@@ -3,22 +3,25 @@ export interface AnswerOption {
   text: string;
 }
 
-export interface TestQuestion {
+export interface PublicTestQuestion {
   id: string;
   text: string;
   options: AnswerOption[];
-  correctAnswerId: string;
-  explanation: string;
 }
 
-export interface Test {
+export interface PublicTest {
   id: string;
   title: string;
   description: string;
   subject: string;
   topic: string;
   durationMinutes: number;
-  questions: TestQuestion[];
+  questions: PublicTestQuestion[];
+}
+
+export interface SubmitTestRequest {
+  answers: Record<string, string>;
+  timeExpired?: boolean;
 }
 
 export interface TestResult {
