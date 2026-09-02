@@ -3,11 +3,28 @@ export interface AnswerOption {
   text: string;
 }
 
-export interface PublicTestQuestion {
+export interface TestQuestion {
   id: string;
   text: string;
   options: AnswerOption[];
+  correctAnswerId: string;
+  explanation: string;
 }
+
+export interface Test {
+  id: string;
+  title: string;
+  description: string;
+  subject: string;
+  topic: string;
+  durationMinutes: number;
+  questions: TestQuestion[];
+}
+
+export type PublicTestQuestion = Omit<
+  TestQuestion,
+  'correctAnswerId' | 'explanation'
+>;
 
 export interface PublicTest {
   id: string;

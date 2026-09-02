@@ -9,81 +9,137 @@ import {
   useNavigate,
   useParams,
 } from 'react-router';
-import { getTestById } from '../data/tests';
-import type { TestResult } from '../types/test';
+
+import { ApiError } from '../api/http';
+import {
+  getTest,
+  submitTest,
+} from '../api/tests-api';
+import type { PublicTest } from '../types/test';
 
 function TestPage() {
   const { testId } = useParams<{ testId: string }>();
   const navigate = useNavigate();
 
-  const test = testId ? getTestById(testId) : undefined;
+  const [test, setTest] = useState<PublicTest | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const [loadErrorTitle, setLoadErrorTitle] = useState<
+    string | null
+  >(null);
+
+  const [loadError, setLoadError] = useState<string | null>(
+    null,
+  );
 
   const [currentQuestionIndex, setCurrentQuestionIndex] =
     useState(0);
 
-  const [answers, setAnswers] = useState<Record<string, string>>(
-    {},
-  );
+  const [answers, setAnswers] = useState<
+    Record<string, string>
+  >({});
 
-  const [remainingSeconds, setRemainingSeconds] = useState(
-    test ? test.durationMinutes * 60 : 0,
-  );
+  const [remainingSeconds, setRemainingSeconds] =
+    useState<number | null>(null);
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [submitError, setSubmitError] = useState<
+    string | null
+  >(null);
 
   const isTestFinished = useRef(false);
 
+  useEffect(() => {
+    const loadTest = async () => {
+      if (!testId) {
+        setLoadErrorTitle('Помилка');
+        setLoadError(
+          'Некоректний ідентифікатор тесту.',
+        );
+        setIsLoading(false);
+
+        return;
+      }
+
+      try {
+        const testData = await getTest(testId);
+
+        setTest(testData);
+        setRemainingSeconds(
+          testData.durationMinutes * 60,
+        );
+      } catch (error) {
+        if (error instanceof ApiError) {
+          if (error.status === 404) {
+            setLoadErrorTitle('Тест не знайдено');
+          } else {
+            setLoadErrorTitle(
+              'Не вдалося завантажити тест',
+            );
+          }
+
+          setLoadError(error.message);
+        } else {
+          setLoadErrorTitle(
+            'Не вдалося завантажити тест',
+          );
+
+          setLoadError(
+            'Не вдалося з’єднатися із сервером. Спробуйте ще раз пізніше.',
+          );
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void loadTest();
+  }, [testId]);
+
   const handleFinishTest = useCallback(
-    (timeExpired: boolean) => {
-      if (!test || isTestFinished.current) {
+    async (timeExpired: boolean) => {
+      if (
+        !test ||
+        !testId ||
+        isTestFinished.current
+      ) {
         return;
       }
 
       isTestFinished.current = true;
+      setIsSubmitting(true);
+      setSubmitError(null);
 
-      const correctAnswers = test.questions.reduce(
-        (totalCorrectAnswers, question) => {
-          const selectedAnswerId = answers[question.id];
+      try {
+        const result = await submitTest(testId, {
+          answers,
+          timeExpired,
+        });
 
-          if (
-            selectedAnswerId === question.correctAnswerId
-          ) {
-            return totalCorrectAnswers + 1;
-          }
+        sessionStorage.setItem(
+          `test-result:${result.attemptId}`,
+          JSON.stringify(result),
+        );
 
-          return totalCorrectAnswers;
-        },
-        0,
-      );
+        navigate(`/results/${result.attemptId}`, {
+          replace: true,
+        });
+      } catch (error) {
+        isTestFinished.current = false;
 
-      const totalQuestions = test.questions.length;
-
-      const percentage = Math.round(
-        (correctAnswers / totalQuestions) * 100,
-      );
-
-      const attemptId = `${test.id}-${Date.now()}`;
-
-      const result: TestResult = {
-        attemptId,
-        testId: test.id,
-        testTitle: test.title,
-        subject: test.subject,
-        totalQuestions,
-        correctAnswers,
-        percentage,
-        answers,
-        timeExpired,
-      };
-
-      sessionStorage.setItem(
-        `test-result:${attemptId}`,
-        JSON.stringify(result),
-      );
-
-      navigate(`/results/${attemptId}`, {
-        replace: true,
-      });
+        if (error instanceof ApiError) {
+          setSubmitError(error.message);
+        } else {
+          setSubmitError(
+            'Не вдалося з’єднатися із сервером. Перевірте підключення та спробуйте ще раз.',
+          );
+        }
+      } finally {
+        setIsSubmitting(false);
+      }
     },
-    [answers, navigate, test],
+    [answers, navigate, test, testId],
   );
 
   useEffect(() => {
@@ -93,6 +149,10 @@ function TestPage() {
 
     const timerId = window.setInterval(() => {
       setRemainingSeconds(previousSeconds => {
+        if (previousSeconds === null) {
+          return null;
+        }
+
         if (previousSeconds <= 1) {
           window.clearInterval(timerId);
 
@@ -109,24 +169,47 @@ function TestPage() {
   }, [test]);
 
   useEffect(() => {
-    if (remainingSeconds !== 0 || !test) {
+    if (
+      remainingSeconds === null ||
+      remainingSeconds !== 0 ||
+      !test
+    ) {
       return;
     }
 
-    handleFinishTest(true);
+    const finishTimerId = window.setTimeout(() => {
+      void handleFinishTest(true);
+    }, 0);
+
+    return () => {
+      window.clearTimeout(finishTimerId);
+    };
   }, [handleFinishTest, remainingSeconds, test]);
 
-  if (!test) {
+  if (isLoading) {
+    return (
+      <main className="test-page">
+        <section className="test-error">
+          <p className="test-error-text">
+            Завантаження...
+          </p>
+        </section>
+      </main>
+    );
+  }
+
+  if (loadError || !test) {
     return (
       <main className="test-page">
         <section className="test-error">
           <h1 className="test-error-title">
-            Тест не знайдено
+            {loadErrorTitle ??
+              'Не вдалося завантажити тест'}
           </h1>
 
           <p className="test-error-text">
-            На жаль, такого тесту не існує або посилання є
-            неправильним.
+            {loadError ??
+              'На жаль, тест недоступний.'}
           </p>
 
           <Link
@@ -143,12 +226,36 @@ function TestPage() {
   const currentQuestion =
     test.questions[currentQuestionIndex];
 
+  if (!currentQuestion) {
+    return (
+      <main className="test-page">
+        <section className="test-error">
+          <h1 className="test-error-title">
+            Запитання відсутні
+          </h1>
+
+          <p className="test-error-text">
+            У цьому тесті поки немає доступних запитань.
+          </p>
+
+          <Link
+            className="test-error-link"
+            to="/subjects"
+          >
+            Повернутися до предметів
+          </Link>
+        </section>
+      </main>
+    );
+  }
+
   const totalQuestions = test.questions.length;
 
   const selectedAnswerId =
     answers[currentQuestion.id] ?? null;
 
-  const isFirstQuestion = currentQuestionIndex === 0;
+  const isFirstQuestion =
+    currentQuestionIndex === 0;
 
   const isLastQuestion =
     currentQuestionIndex === totalQuestions - 1;
@@ -156,11 +263,15 @@ function TestPage() {
   const progressPercentage =
     ((currentQuestionIndex + 1) / totalQuestions) * 100;
 
+  const safeRemainingSeconds =
+    remainingSeconds ?? 0;
+
   const remainingMinutes = Math.floor(
-    remainingSeconds / 60,
+    safeRemainingSeconds / 60,
   );
 
-  const remainingSecondsPart = remainingSeconds % 60;
+  const remainingSecondsPart =
+    safeRemainingSeconds % 60;
 
   const formattedTime = `${String(
     remainingMinutes,
@@ -169,6 +280,10 @@ function TestPage() {
   ).padStart(2, '0')}`;
 
   const handleAnswerSelect = (answerId: string) => {
+    if (isSubmitting) {
+      return;
+    }
+
     setAnswers(previousAnswers => ({
       ...previousAnswers,
       [currentQuestion.id]: answerId,
@@ -176,7 +291,7 @@ function TestPage() {
   };
 
   const handlePreviousQuestion = () => {
-    if (isFirstQuestion) {
+    if (isFirstQuestion || isSubmitting) {
       return;
     }
 
@@ -186,7 +301,11 @@ function TestPage() {
   };
 
   const handleNextQuestion = () => {
-    if (!selectedAnswerId || isLastQuestion) {
+    if (
+      !selectedAnswerId ||
+      isLastQuestion ||
+      isSubmitting
+    ) {
       return;
     }
 
@@ -204,7 +323,9 @@ function TestPage() {
               {test.subject}
             </p>
 
-            <h1 className="test-title">{test.title}</h1>
+            <h1 className="test-title">
+              {test.title}
+            </h1>
           </div>
 
           <div className="test-header-information">
@@ -280,6 +401,7 @@ function TestPage() {
                   key={option.id}
                   type="button"
                   aria-pressed={isSelected}
+                  disabled={isSubmitting}
                   onClick={() =>
                     handleAnswerSelect(option.id)
                   }
@@ -296,11 +418,32 @@ function TestPage() {
             })}
           </div>
 
+          {submitError && (
+            <div>
+              <p>{submitError}</p>
+
+              <button
+                className="test-navigation-button"
+                type="button"
+                disabled={isSubmitting}
+                onClick={() =>
+                  void handleFinishTest(
+                    remainingSeconds === 0,
+                  )
+                }
+              >
+                Спробувати ще раз
+              </button>
+            </div>
+          )}
+
           <div className="test-navigation">
             <button
               className="test-navigation-button"
               type="button"
-              disabled={isFirstQuestion}
+              disabled={
+                isFirstQuestion || isSubmitting
+              }
               onClick={handlePreviousQuestion}
             >
               Попереднє питання
@@ -310,18 +453,24 @@ function TestPage() {
               <button
                 className="test-navigation-button test-navigation-button-primary"
                 type="button"
-                disabled={!selectedAnswerId}
+                disabled={
+                  !selectedAnswerId || isSubmitting
+                }
                 onClick={() =>
-                  handleFinishTest(false)
+                  void handleFinishTest(false)
                 }
               >
-                Завершити тест
+                {isSubmitting
+                  ? 'Надсилання...'
+                  : 'Завершити тест'}
               </button>
             ) : (
               <button
                 className="test-navigation-button test-navigation-button-primary"
                 type="button"
-                disabled={!selectedAnswerId}
+                disabled={
+                  !selectedAnswerId || isSubmitting
+                }
                 onClick={handleNextQuestion}
               >
                 Наступне питання

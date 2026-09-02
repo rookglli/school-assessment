@@ -1,22 +1,45 @@
+import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router';
 
-const topics = [
-  {
-    id: 'natural-numbers',
-    title: 'Натуральні числа',
-  },
-  {
-    id: 'fractions',
-    title: 'Звичайні дроби',
-  },
-  {
-    id: 'geometry',
-    title: 'Геометричні фігури',
-  },
-];
+import { ApiError } from '../api/http';
+import { getSubjectTopics } from '../api/subjects-api';
+import type { Topic } from '../types/subject';
 
 function SubjectTopicsPage() {
-  const { subjectId } = useParams();
+  const { subjectId } = useParams<{ subjectId: string }>();
+
+  const [topics, setTopics] = useState<Topic[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadTopics = async () => {
+      if (!subjectId) {
+        setError('Некоректний ідентифікатор предмета.');
+        setIsLoading(false);
+
+        return;
+      }
+
+      try {
+        const topicsData = await getSubjectTopics(subjectId);
+
+        setTopics(topicsData);
+      } catch (error) {
+        if (error instanceof ApiError) {
+          setError(error.message);
+        } else {
+          setError(
+            'Не вдалося з’єднатися із сервером. Спробуйте ще раз пізніше.',
+          );
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void loadTopics();
+  }, [subjectId]);
 
   return (
     <main className="page">
@@ -31,20 +54,49 @@ function SubjectTopicsPage() {
           Ідентифікатор предмета: {subjectId}
         </p>
 
-        <ul className="topic-list">
-          {topics.map(topic => (
-            <li className="topic-item" key={topic.id}>
-              <h2 className="topic-title">{topic.title}</h2>
+        {isLoading && (
+          <p className="page-description">
+            Завантаження...
+          </p>
+        )}
 
-              <Link
-                className="topic-link"
-                to={`/tests/${topic.id}`}
-              >
-                Перейти до тесту
-              </Link>
-            </li>
-          ))}
-        </ul>
+        {error && (
+          <p className="page-description">
+            {error}
+          </p>
+        )}
+
+        {!isLoading &&
+          !error &&
+          topics.length === 0 && (
+            <p className="page-description">
+              Для цього предмета поки немає доступних тем.
+            </p>
+          )}
+
+        {!isLoading &&
+          !error &&
+          topics.length > 0 && (
+            <ul className="topic-list">
+              {topics.map(topic => (
+                <li
+                  className="topic-item"
+                  key={topic.id}
+                >
+                  <h2 className="topic-title">
+                    {topic.title}
+                  </h2>
+
+                  <Link
+                    className="topic-link"
+                    to={`/tests/${topic.testId}`}
+                  >
+                    Перейти до тесту
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
       </div>
     </main>
   );
