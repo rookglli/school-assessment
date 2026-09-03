@@ -1,9 +1,9 @@
 import cors from 'cors';
 import express from 'express';
 
-import healthRouter from './routes/health.routes';
-import subjectsRouter from './routes/subjects.routes';
-import testsRouter from './routes/tests.routes';
+import healthRouter from './routes/health.routes.js';
+import subjectsRouter from './routes/subjects.routes.js';
+import testsRouter from './routes/tests.routes.js';
 
 const app = express();
 

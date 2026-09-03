@@ -3,7 +3,7 @@ import { Router } from 'express';
 import {
   getSubjects,
   getSubjectTopics,
-} from '../controllers/subjects.controller';
+} from '../controllers/subjects.controller.js';
 
 const subjectsRouter = Router();
 

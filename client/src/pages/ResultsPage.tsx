@@ -1,5 +1,8 @@
-import { useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router';
+
+import { ApiError } from '../api/http';
+import { getTestResult } from '../api/tests-api';
 import type { TestResult } from '../types/test';
 
 function ResultsPage() {
@@ -7,25 +10,95 @@ function ResultsPage() {
     attemptId: string;
   }>();
 
-  const result = useMemo<TestResult | null>(() => {
-    if (!attemptId) {
-      return null;
-    }
+  const [result, setResult] = useState<TestResult | null>(
+    null,
+  );
 
-    const savedResult = sessionStorage.getItem(
-      `test-result:${attemptId}`,
-    );
+  const [isLoading, setIsLoading] = useState(true);
 
-    if (!savedResult) {
-      return null;
-    }
+  const [errorMessage, setErrorMessage] = useState<
+    string | null
+  >(null);
 
-    try {
-      return JSON.parse(savedResult) as TestResult;
-    } catch {
-      return null;
-    }
+  useEffect(() => {
+    let isActive = true;
+
+    const loadResult = async () => {
+      if (!attemptId) {
+        setErrorMessage(
+          'Некоректний ідентифікатор спроби.',
+        );
+        setIsLoading(false);
+
+        return;
+      }
+
+      try {
+        const resultData = await getTestResult(attemptId);
+
+        if (!isActive) {
+          return;
+        }
+
+        setResult(resultData);
+
+        sessionStorage.setItem(
+          `test-result:${attemptId}`,
+          JSON.stringify(resultData),
+        );
+      } catch (error) {
+        if (!isActive) {
+          return;
+        }
+
+        const savedResult = sessionStorage.getItem(
+          `test-result:${attemptId}`,
+        );
+
+        if (savedResult) {
+          try {
+            setResult(JSON.parse(savedResult) as TestResult);
+
+            return;
+          } catch {
+            sessionStorage.removeItem(
+              `test-result:${attemptId}`,
+            );
+          }
+        }
+
+        if (error instanceof ApiError) {
+          setErrorMessage(error.message);
+        } else {
+          setErrorMessage(
+            'Не вдалося з’єднатися із сервером.',
+          );
+        }
+      } finally {
+        if (isActive) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    void loadResult();
+
+    return () => {
+      isActive = false;
+    };
   }, [attemptId]);
+
+  if (isLoading) {
+    return (
+      <main className="page">
+        <div className="page-container">
+          <h1 className="page-title">
+            Завантаження результату...
+          </h1>
+        </div>
+      </main>
+    );
+  }
 
   if (!result) {
     return (
@@ -36,15 +109,11 @@ function ResultsPage() {
           </h1>
 
           <p className="page-description">
-            Не вдалося завантажити результат цієї спроби.
-            Можливо, дані були видалені або посилання є
-            неправильним.
+            {errorMessage ??
+              'Не вдалося завантажити результат цієї спроби.'}
           </p>
 
-          <Link
-            className="primary-link"
-            to="/subjects"
-          >
+          <Link className="primary-link" to="/subjects">
             Обрати тест
           </Link>
         </div>
@@ -67,13 +136,9 @@ function ResultsPage() {
   return (
     <main className="page">
       <div className="page-container">
-        <p className="page-label">
-          {result.subject}
-        </p>
+        <p className="page-label">{result.subject}</p>
 
-        <h1 className="page-title">
-          Тест завершено
-        </h1>
+        <h1 className="page-title">Тест завершено</h1>
 
         <p className="page-description">
           {result.testTitle}
@@ -120,10 +185,7 @@ function ResultsPage() {
             Пройти тест ще раз
           </Link>
 
-          <Link
-            className="back-link"
-            to="/subjects"
-          >
+          <Link className="back-link" to="/subjects">
             Обрати інший тест
           </Link>
         </div>
