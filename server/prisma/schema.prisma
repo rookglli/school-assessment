@@ -1,0 +1,102 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Subject {
+  id          String  @id
+  title       String
+  description String
+  topics      Topic[]
+
+  @@map("subjects")
+}
+
+model Topic {
+  id          String  @id
+  title       String
+  description String
+  subjectId   String  @map("subject_id")
+  subject     Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  test        Test?
+
+  @@index([subjectId])
+  @@map("topics")
+}
+
+model Test {
+  id              String        @id
+  title           String
+  description     String
+  durationMinutes Int           @map("duration_minutes")
+  topicId         String        @unique @map("topic_id")
+  topic           Topic         @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  questions       Question[]
+  attempts        TestAttempt[]
+
+  @@map("tests")
+}
+
+model Question {
+  id             String          @id
+  text           String
+  explanation    String
+  position       Int
+  testId         String          @map("test_id")
+  test           Test            @relation(fields: [testId], references: [id], onDelete: Cascade)
+  options        AnswerOption[]
+  attemptAnswers AttemptAnswer[]
+
+  @@unique([testId, position])
+  @@index([testId])
+  @@map("questions")
+}
+
+model AnswerOption {
+  id             String          @id
+  text           String
+  isCorrect      Boolean         @default(false) @map("is_correct")
+  position       Int
+  questionId     String          @map("question_id")
+  question       Question        @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  attemptAnswers AttemptAnswer[]
+
+  @@unique([questionId, position])
+  @@index([questionId])
+  @@map("answer_options")
+}
+
+model TestAttempt {
+  id             String          @id @default(uuid())
+  testId         String          @map("test_id")
+  totalQuestions Int             @map("total_questions")
+  correctAnswers Int             @map("correct_answers")
+  percentage     Int
+  timeExpired    Boolean         @default(false) @map("time_expired")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  test           Test            @relation(fields: [testId], references: [id], onDelete: Cascade)
+  answers        AttemptAnswer[]
+
+  @@index([testId])
+  @@map("test_attempts")
+}
+
+model AttemptAnswer {
+  id               String        @id @default(uuid())
+  attemptId        String        @map("attempt_id")
+  questionId       String        @map("question_id")
+  selectedOptionId String?       @map("selected_option_id")
+  isCorrect        Boolean       @default(false) @map("is_correct")
+  attempt          TestAttempt   @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question         Question      @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  selectedOption   AnswerOption? @relation(fields: [selectedOptionId], references: [id], onDelete: SetNull)
+
+  @@unique([attemptId, questionId])
+  @@index([questionId])
+  @@index([selectedOptionId])
+  @@map("attempt_answers")
+}

@@ -29,3 +29,11 @@ export const submitTest = (
     }
   );
 };
+
+export const getTestResult = (
+  attemptId: string
+): Promise<TestResult> => {
+  return apiRequest<TestResult>(
+    `/results/${encodeURIComponent(attemptId)}`
+  );
+};
