@@ -1,5 +1,4 @@
-import type { Subject, Topic } from '../types/subject';
-
+import type { Subject, Topic } from '../src/types/subject.js';
 export const subjects: Subject[] = [
   {
     id: 'mathematics',

@@ -1,4 +1,4 @@
-import type { Test } from '../types/test';
+import type { Test } from '../src/types/test.js';
 
 export const tests: Test[] = [
   {
